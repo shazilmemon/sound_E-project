@@ -53,6 +53,10 @@ include __DIR__ . '/../includes/header.php';
       <div class="alert alert-success">✅ Logged out successfully.</div>
     <?php endif; ?>
 
+    <?php if (isset($_GET['msg']) && $_GET['msg'] === 'pass_reset'): ?>
+      <div class="alert alert-success">✅ Password reset successfully! Please login with your new password.</div>
+    <?php endif; ?>
+
     <?php if ($errors): ?>
       <div class="alert alert-danger">
         <?php foreach ($errors as $e): ?><p>❌ <?= clean($e) ?></p><?php endforeach; ?>
@@ -86,10 +90,13 @@ include __DIR__ . '/../includes/header.php';
 
       <div class="form-check-row">
         <label><input type="checkbox" name="remember"> Remember me</label>
-        <a href="#" class="forgot-link">Forgot Password?</a>
       </div>
 
       <button type="submit" class="btn btn-primary btn-full"><i class="fas fa-sign-in-alt"></i> Login</button>
+
+      <div class="forgot-wrapper">
+        <a href="<?= SITE_URL ?>/pages/forgot-password.php" class="forgot-link"><i class="fas fa-key"></i> Forgot Password?</a>
+      </div>
     </form>
 
     <div class="demo-creds">

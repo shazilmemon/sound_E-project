@@ -1243,6 +1243,48 @@ audio::-webkit-media-controls-time-remaining-display {
   grid-template-columns: 1fr 1fr;
   gap: 14px;
 }
+.form-check-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.form-check-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.form-check-row input[type="checkbox"] {
+  accent-color: var(--primary);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+.forgot-wrapper {
+  text-align: center;
+  margin-top: 14px;
+}
+.forgot-link {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s ease;
+}
+.forgot-link i {
+  color: var(--primary);
+  font-size: 12px;
+}
+.forgot-link:hover {
+  color: #fff;
+  text-decoration: underline;
+}
 .auth-link {
   text-align: center;
   font-size: 13px;
