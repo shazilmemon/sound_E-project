@@ -69,12 +69,20 @@ include __DIR__ . '/../includes/header.php';
 
       <div class="form-group">
         <label>Email Address *</label>
-        <input type="email" name="email" value="<?= clean($old['email'] ?? '') ?>" placeholder="your@email.com" required>
+        <input type="email" name="email" id="email" value="<?= clean($old['email'] ?? '') ?>" placeholder="name@example.com" required autocomplete="email">
+        <div class="field-error-msg" id="email-error">Please enter a valid email address (e.g. name@example.com).</div>
       </div>
 
       <div class="form-group">
-        <label>Phone Number *</label>
-        <input type="tel" name="phone" value="<?= clean($old['phone'] ?? '') ?>" placeholder="+91 XXXXXXXXXX" required>
+        <label>Pakistan Mobile Number * <small>(11 Digits)</small></label>
+        <div class="phone-input-wrapper" id="phone-wrapper">
+          <div class="phone-prefix">
+            <span class="flag-icon">🇵🇰</span> +92
+          </div>
+          <input type="tel" name="phone" id="phone" value="<?= clean($old['phone'] ?? '') ?>" placeholder="03001234567" maxlength="11" required autocomplete="tel" inputmode="numeric">
+        </div>
+        <div class="field-error-msg" id="phone-error">Please enter a valid 11-digit Pakistan mobile number starting with 03 (e.g. 03001234567).</div>
+        <small style="color:var(--text-muted); font-size:11px; display:block; margin-top:4px;">Format: exactly 11 digits starting with 03 (e.g. 03001234567, 03451234567)</small>
       </div>
 
       <div class="form-group">
@@ -86,16 +94,22 @@ include __DIR__ . '/../includes/header.php';
         <div class="form-group">
           <label>Password *</label>
           <div class="input-icon">
-            <input type="password" name="password" id="pass" placeholder="Min 6 characters" required minlength="6">
-            <span class="toggle-pass" onclick="togglePass('pass')"><i class="fas fa-eye"></i></span>
+            <input type="password" name="password" id="pass" placeholder="Min 6 characters" required minlength="6" autocomplete="new-password">
+            <span class="toggle-pass" onclick="togglePass('pass', this)" title="Show / Hide Password" aria-label="Toggle password visibility">
+              <i class="fas fa-eye"></i>
+            </span>
           </div>
+          <div class="field-error-msg" id="pass-error">Password must be at least 6 characters long.</div>
         </div>
         <div class="form-group">
           <label>Confirm Password *</label>
           <div class="input-icon">
-            <input type="password" name="confirm_password" id="cpass" placeholder="Re-enter password" required>
-            <span class="toggle-pass" onclick="togglePass('cpass')"><i class="fas fa-eye"></i></span>
+            <input type="password" name="confirm_password" id="cpass" placeholder="Re-enter password" required autocomplete="new-password">
+            <span class="toggle-pass" onclick="togglePass('cpass', this)" title="Show / Hide Password" aria-label="Toggle password visibility">
+              <i class="fas fa-eye"></i>
+            </span>
           </div>
+          <div class="field-error-msg" id="cpass-error">Passwords do not match.</div>
         </div>
       </div>
 
@@ -107,18 +121,147 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <script>
-function togglePass(id) {
-  const el = document.getElementById(id);
-  el.type = el.type === 'password' ? 'text' : 'password';
+// --- Eye Toggle for Password & Confirm Password (inside input box) ---
+function togglePass(id, btn) {
+  const input = document.getElementById(id);
+  if (!input) return;
+  const icon = btn.querySelector('i');
+  if (input.type === 'password') {
+    input.type = 'text';
+    if (icon) {
+      icon.classList.remove('fa-eye');
+      icon.classList.add('fa-eye-slash');
+    }
+    btn.setAttribute('title', 'Hide Password');
+  } else {
+    input.type = 'password';
+    if (icon) {
+      icon.classList.remove('fa-eye-slash');
+      icon.classList.add('fa-eye');
+    }
+    btn.setAttribute('title', 'Show Password');
+  }
 }
 
-// Client-side password match validation
-document.querySelector('.auth-form').addEventListener('submit', function(e) {
-  const p  = document.getElementById('pass').value;
-  const cp = document.getElementById('cpass').value;
-  if (p !== cp) {
+// --- Live Client-Side Validations ---
+const emailInput   = document.getElementById('email');
+const emailError   = document.getElementById('email-error');
+const phoneInput   = document.getElementById('phone');
+const phoneWrapper = document.getElementById('phone-wrapper');
+const phoneError   = document.getElementById('phone-error');
+const passInput    = document.getElementById('pass');
+const passError    = document.getElementById('pass-error');
+const cpassInput   = document.getElementById('cpass');
+const cpassError   = document.getElementById('cpass-error');
+const form         = document.querySelector('.auth-form');
+
+// Email regex validation
+function validateEmail() {
+  const val = emailInput.value.trim();
+  const re  = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!val || !re.test(val)) {
+    emailInput.classList.add('is-invalid');
+    emailInput.classList.remove('is-valid');
+    emailError.classList.add('visible');
+    return false;
+  } else {
+    emailInput.classList.remove('is-invalid');
+    emailInput.classList.add('is-valid');
+    emailError.classList.remove('visible');
+    return true;
+  }
+}
+
+// Pakistan 11-digit phone validation (e.g. 03001234567)
+function validatePhone() {
+  const val = phoneInput.value.trim();
+  const re  = /^03[0-9]{9}$/;
+  if (!val || !re.test(val)) {
+    phoneWrapper.classList.add('is-invalid');
+    phoneWrapper.classList.remove('is-valid');
+    phoneError.classList.add('visible');
+    return false;
+  } else {
+    phoneWrapper.classList.remove('is-invalid');
+    phoneWrapper.classList.add('is-valid');
+    phoneError.classList.remove('visible');
+    return true;
+  }
+}
+
+// Password validation (min 6 chars)
+function validatePassword() {
+  const val = passInput.value;
+  if (!val || val.length < 6) {
+    passInput.classList.add('is-invalid');
+    passInput.classList.remove('is-valid');
+    passError.classList.add('visible');
+    return false;
+  } else {
+    passInput.classList.remove('is-invalid');
+    passInput.classList.add('is-valid');
+    passError.classList.remove('visible');
+    return true;
+  }
+}
+
+// Confirm password match
+function validateConfirmPassword() {
+  const p  = passInput.value;
+  const cp = cpassInput.value;
+  if (!cp || p !== cp) {
+    cpassInput.classList.add('is-invalid');
+    cpassInput.classList.remove('is-valid');
+    cpassError.classList.add('visible');
+    return false;
+  } else {
+    cpassInput.classList.remove('is-invalid');
+    cpassInput.classList.add('is-valid');
+    cpassError.classList.remove('visible');
+    return true;
+  }
+}
+
+// Event Listeners for live feedback
+emailInput.addEventListener('input', validateEmail);
+emailInput.addEventListener('blur', validateEmail);
+
+phoneInput.addEventListener('input', function() {
+  // Only allow numbers, max 11 digits
+  this.value = this.value.replace(/[^0-9]/g, '');
+  if (this.value.length > 11) {
+    this.value = this.value.slice(0, 11);
+  }
+  validatePhone();
+});
+phoneInput.addEventListener('blur', validatePhone);
+
+passInput.addEventListener('input', function() {
+  validatePassword();
+  if (cpassInput.value.length > 0) validateConfirmPassword();
+});
+
+cpassInput.addEventListener('input', validateConfirmPassword);
+cpassInput.addEventListener('blur', validateConfirmPassword);
+
+// Form submit validation check
+form.addEventListener('submit', function(e) {
+  const isEmailOk = validateEmail();
+  const isPhoneOk = validatePhone();
+  const isPassOk  = validatePassword();
+  const isCpassOk = validateConfirmPassword();
+
+  if (!isEmailOk || !isPhoneOk || !isPassOk || !isCpassOk) {
     e.preventDefault();
-    alert('Passwords do not match!');
+    if (!isEmailOk) {
+      emailInput.focus();
+    } else if (!isPhoneOk) {
+      phoneInput.focus();
+    } else if (!isPassOk) {
+      passInput.focus();
+    } else if (!isCpassOk) {
+      cpassInput.focus();
+    }
   }
 });
 </script>

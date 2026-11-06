@@ -77,8 +77,10 @@ include __DIR__ . '/../includes/header.php';
       <div class="form-group">
         <label>Password *</label>
         <div class="input-icon">
-          <input type="password" name="password" id="pass" placeholder="Enter your password" required>
-          <span class="toggle-pass" onclick="togglePass('pass')"><i class="fas fa-eye"></i></span>
+          <input type="password" name="password" id="pass" placeholder="Enter your password" required autocomplete="current-password">
+          <span class="toggle-pass" onclick="togglePass('pass', this)" title="Show / Hide Password" aria-label="Toggle password visibility">
+            <i class="fas fa-eye"></i>
+          </span>
         </div>
       </div>
 
@@ -100,9 +102,25 @@ include __DIR__ . '/../includes/header.php';
 </div>
 
 <script>
-function togglePass(id) {
-  const el = document.getElementById(id);
-  el.type = el.type === 'password' ? 'text' : 'password';
+function togglePass(id, btn) {
+  const input = document.getElementById(id);
+  if (!input) return;
+  const icon = btn.querySelector('i');
+  if (input.type === 'password') {
+    input.type = 'text';
+    if (icon) {
+      icon.classList.remove('fa-eye');
+      icon.classList.add('fa-eye-slash');
+    }
+    btn.setAttribute('title', 'Hide Password');
+  } else {
+    input.type = 'password';
+    if (icon) {
+      icon.classList.remove('fa-eye-slash');
+      icon.classList.add('fa-eye');
+    }
+    btn.setAttribute('title', 'Show Password');
+  }
 }
 </script>
 

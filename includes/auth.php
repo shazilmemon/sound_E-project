@@ -59,13 +59,31 @@ function registerUser(array $data): array {
     }
 
     // Validate email
-    if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-        return ['success' => false, 'msg' => 'Invalid email address.'];
+    $email = trim($data['email'] ?? '');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/', $email)) {
+        return ['success' => false, 'msg' => 'Please enter a valid email address (e.g. name@example.com).'];
     }
 
-    // Validate phone
-    if (!preg_match('/^[0-9+\-\s]{10,15}$/', $data['phone'])) {
-        return ['success' => false, 'msg' => 'Invalid phone number.'];
+    // Validate Pakistan phone number (exactly 11 digits, starting with 03)
+    $rawPhone = trim($data['phone'] ?? '');
+    $digits   = preg_replace('/[^0-9]/', '', $rawPhone);
+    if (strlen($digits) === 12 && str_starts_with($digits, '923')) {
+        $digits = '0' . substr($digits, 2);
+    } elseif (strlen($digits) === 10 && str_starts_with($digits, '3')) {
+        $digits = '0' . $digits;
+    }
+
+    if (!preg_match('/^03[0-9]{9}$/', $digits)) {
+        return ['success' => false, 'msg' => 'Please enter a valid 11-digit Pakistan mobile number starting with 03 (e.g. 03001234567).'];
+    }
+    $savedPhone = '+92 ' . substr($digits, 1);
+
+    // Password validation & match
+    if (strlen($data['password']) < 6) {
+        return ['success' => false, 'msg' => 'Password must be at least 6 characters long.'];
+    }
+    if (isset($data['confirm_password']) && $data['password'] !== $data['confirm_password']) {
+        return ['success' => false, 'msg' => 'Password and Confirm Password do not match.'];
     }
 
     // Check unique user_id
@@ -92,7 +110,7 @@ function registerUser(array $data): array {
         trim($data['user_id']),
         trim($data['full_name']),
         trim($data['email']),
-        trim($data['phone']),
+        $savedPhone,
         trim($data['address']),
         $hash
     ]);
