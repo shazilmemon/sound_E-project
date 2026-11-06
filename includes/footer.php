@@ -10,7 +10,18 @@
   <div class="footer-container">
     <div class="footer-grid">
       <div class="footer-brand">
-        <div class="logo-text"><em>SOUND</em> GROUP</div>
+        <div class="brand-link" style="margin-bottom: 14px;">
+          <div class="brand-badge">
+            <div class="logo-icon-glow"></div>
+            <div class="logo-icon-inner">
+              <i class="fas fa-headphones-simple brand-icon"></i>
+            </div>
+          </div>
+          <div class="brand-title-wrap">
+            <span class="brand-title"><span class="brand-glow">SONIX</span><span class="brand-accent">WAVE</span></span>
+            <span class="brand-tagline"><span class="pulse-dot"></span> SOUND GROUP</span>
+          </div>
+        </div>
         <p>Your ultimate destination for music and video entertainment. Explore songs, albums, artists in Regional & English languages.</p>
         <div class="social-links">
           <a href="#" class="social-link"><i class="fab fa-facebook-f"></i></a>

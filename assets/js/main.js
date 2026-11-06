@@ -3,20 +3,64 @@
 // assets/js/main.js
 // =====================================================
 document.addEventListener('DOMContentLoaded', () => {
-  // Mobile Hamburger Toggle
+  // Navbar Scroll Dynamic Effect
+  const navbar = document.getElementById('navbar');
+  const handleNavScroll = () => {
+    if (!navbar) return;
+    if (window.scrollY > 20) {
+      navbar.classList.add('scrolled');
+    } else {
+      navbar.classList.remove('scrolled');
+    }
+  };
+  window.addEventListener('scroll', handleNavScroll, { passive: true });
+  handleNavScroll();
+
+  // Mobile Hamburger & Drawer Toggle
   const hamburger = document.getElementById('hamburger');
-  const navLinks = document.querySelector('.nav-links');
+  const navLinks = document.getElementById('navLinks');
   if (hamburger && navLinks) {
-    hamburger.addEventListener('click', () => {
-      navLinks.style.display = navLinks.style.display === 'flex' ? 'none' : 'flex';
-      navLinks.style.flexDirection = 'column';
-      navLinks.style.position = 'absolute';
-      navLinks.style.top = '72px';
-      navLinks.style.left = '0';
-      navLinks.style.right = '0';
-      navLinks.style.background = '#141414';
-      navLinks.style.padding = '20px';
-      navLinks.style.borderBottom = '1px solid #2e2e2e';
+    hamburger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isActive = hamburger.classList.toggle('active');
+      navLinks.classList.toggle('active', isActive);
+      hamburger.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+    });
+
+    // Close mobile menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!hamburger.contains(e.target) && !navLinks.contains(e.target)) {
+        hamburger.classList.remove('active');
+        navLinks.classList.remove('active');
+        hamburger.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Close when a nav link is clicked
+    navLinks.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        hamburger.classList.remove('active');
+        navLinks.classList.remove('active');
+        hamburger.setAttribute('aria-expanded', 'false');
+      });
+    });
+  }
+
+  // User menu dropdown toggle on click (supports touch and mobile)
+  const userPillBtn = document.getElementById('userPillBtn');
+  const userMenu = document.getElementById('userMenu');
+  if (userPillBtn && userMenu) {
+    userPillBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = userMenu.classList.toggle('open');
+      userPillBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!userMenu.contains(e.target)) {
+        userMenu.classList.remove('open');
+        userPillBtn.setAttribute('aria-expanded', 'false');
+      }
     });
   }
 
