@@ -13,6 +13,12 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><?= isset($pageTitle) ? clean($pageTitle) . ' | ' : '' ?>SOUND Group</title>
+  <script>
+    (function() {
+      var savedTheme = localStorage.getItem('sound_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    })();
+  </script>
   <link rel="stylesheet" href="<?= SITE_URL ?>/assets/css/style.css?v=<?= time() ?>">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -96,6 +102,15 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
         <button type="submit" class="search-submit-btn" title="Search"><i class="fas fa-arrow-right"></i></button>
       </div>
     </form>
+
+    <!-- THEME TOGGLE BUTTON (BLACK & WHITE / DARK & LIGHT) -->
+    <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle Theme" title="Switch Theme (Dark / Light)">
+      <div class="theme-toggle-track">
+        <i class="fas fa-moon theme-icon-moon" title="Dark Mode"></i>
+        <i class="fas fa-sun theme-icon-sun" title="Light Mode"></i>
+        <span class="theme-toggle-slider"></span>
+      </div>
+    </button>
 
     <?php if (isLoggedIn()): ?>
       <div class="user-menu" id="userMenu">

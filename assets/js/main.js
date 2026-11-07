@@ -3,6 +3,33 @@
 // assets/js/main.js
 // =====================================================
 document.addEventListener('DOMContentLoaded', () => {
+  // ==========================================
+  // THEME SWITCHER (BLACK & WHITE / DARK & LIGHT)
+  // ==========================================
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+
+  function updateThemeUI(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('sound_theme', theme);
+    if (themeToggleBtn) {
+      themeToggleBtn.setAttribute('title', theme === 'light' ? 'Switch to Black Theme (Dark Mode)' : 'Switch to White Theme (Light Mode)');
+      themeToggleBtn.setAttribute('aria-label', theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode');
+    }
+  }
+
+  // Sync with current theme
+  const initialTheme = localStorage.getItem('sound_theme') || 'dark';
+  updateThemeUI(initialTheme);
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const nextTheme = current === 'light' ? 'dark' : 'light';
+      updateThemeUI(nextTheme);
+    });
+  }
+
   // Navbar Scroll Dynamic Effect
   const navbar = document.getElementById('navbar');
   const handleNavScroll = () => {
