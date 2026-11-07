@@ -100,7 +100,7 @@ $recentUsers = $pdo->query("SELECT * FROM users WHERE role='user' ORDER BY creat
       <tbody>
         <?php foreach ($recentMusic as $m): ?>
         <tr>
-          <td><?= clean($m['title']) ?> <?= $m['is_new'] ? '<span class="badge-new-sm">NEW</span>' : '' ?></td>
+          <td><?= clean($m['title']) ?> <?= isMediaNew($m) ? '<span class="badge-new-sm">NEW</span>' : '' ?></td>
           <td><?= clean($m['artist_name'] ?? '-') ?></td>
           <td><?= clean($m['language']) ?></td>
           <td><?= number_format($m['play_count']) ?></td>

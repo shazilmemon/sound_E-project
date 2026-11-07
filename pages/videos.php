@@ -124,7 +124,7 @@ include __DIR__ . '/../includes/header.php';
         <div class="card-thumb">
           <img src="<?= resolveMediaUrl($vid['cover_image'], 'cover') ?>" alt="<?= clean($vid['title']) ?>" onerror="this.onerror=null; this.src='<?= SITE_URL ?>/assets/images/covers/cover_pop.jpg';">
           <div class="card-overlay"><div class="play-circle"><i class="fas fa-play"></i></div></div>
-          <?php if ($vid['is_new']): ?><span class="badge-new">NEW</span><?php endif; ?>
+          <?php if (isMediaNew($vid)): ?><span class="badge-new">NEW</span><?php endif; ?>
           <span class="badge-type video">🎬 Video</span>
         </div>
         <div class="card-body">

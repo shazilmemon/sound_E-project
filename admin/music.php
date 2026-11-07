@@ -58,15 +58,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'edit' && $id > 0) {
-            $stmt = $pdo->prepare("UPDATE music SET title=?, artist_id=?, album_id=?, year=?, genre=?, language=?, cover_image=?, file_path=?, duration=?, description=?, is_new=?, status=? WHERE id=?");
-            $stmt->execute([$title, $artist_id, $album_id, $year, $genre, $language, $cover_image, $file_path, $duration, $description, $is_new, $status, $id]);
+            if ($is_new) {
+                $stmt = $pdo->prepare("UPDATE music SET title=?, artist_id=?, album_id=?, year=?, genre=?, language=?, cover_image=?, file_path=?, duration=?, description=?, is_new=?, status=?, created_at=NOW() WHERE id=?");
+                $stmt->execute([$title, $artist_id, $album_id, $year, $genre, $language, $cover_image, $file_path, $duration, $description, $is_new, $status, $id]);
+            } else {
+                $stmt = $pdo->prepare("UPDATE music SET title=?, artist_id=?, album_id=?, year=?, genre=?, language=?, cover_image=?, file_path=?, duration=?, description=?, is_new=?, status=? WHERE id=?");
+                $stmt->execute([$title, $artist_id, $album_id, $year, $genre, $language, $cover_image, $file_path, $duration, $description, $is_new, $status, $id]);
+            }
             setFlash('success', 'Music track updated successfully.');
             header('Location: ' . SITE_URL . '/admin/music.php');
             exit;
         } else {
-            $stmt = $pdo->prepare("INSERT INTO music (title, artist_id, album_id, year, genre, language, cover_image, file_path, duration, description, is_new, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+            $stmt = $pdo->prepare("INSERT INTO music (title, artist_id, album_id, year, genre, language, cover_image, file_path, duration, description, is_new, status, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW())");
             $stmt->execute([$title, $artist_id, $album_id, $year, $genre, $language, $cover_image, $file_path, $duration, $description, $is_new, $status]);
-            setFlash('success', 'New music track added successfully.');
+            setFlash('success', 'New music track added successfully (Marked as NEW for 3 days).');
             header('Location: ' . SITE_URL . '/admin/music.php');
             exit;
         }
@@ -300,7 +305,7 @@ if ($action === 'edit' && $id > 0) {
           <td><span class="badge-tag"><?= clean($row['language']) ?></span></td>
           <td><?= $row['year'] ?></td>
           <td><?= number_format($row['play_count']) ?></td>
-          <td><?= $row['is_new'] ? '<span class="badge-new-sm">NEW</span>' : '-' ?></td>
+          <td><?= isMediaNew($row) ? '<span class="badge-new-sm">NEW</span>' : '-' ?></td>
           <td><span class="status-<?= $row['status'] ?>"><?= ucfirst($row['status']) ?></span></td>
           <td>
             <a href="<?= SITE_URL ?>/admin/music.php?action=edit&id=<?= $row['id'] ?>" class="tbl-btn" title="Edit"><i class="fas fa-edit"></i></a>

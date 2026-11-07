@@ -134,7 +134,7 @@ include __DIR__ . '/../includes/header.php';
           <div class="card-overlay">
             <div class="play-circle"><i class="fas fa-play"></i></div>
           </div>
-          <?php if ($song['is_new']): ?><span class="badge-new">NEW</span><?php endif; ?>
+          <?php if (isMediaNew($song)): ?><span class="badge-new">NEW</span><?php endif; ?>
           <span class="badge-type music">🎵</span>
         </div>
         <div class="card-body">

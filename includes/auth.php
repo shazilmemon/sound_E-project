@@ -168,6 +168,25 @@ function resolveMediaUrl(?string $path, string $type = 'cover'): string {
     return SITE_URL . '/' . ltrim($path, '/');
 }
 
+// ---- Check if song or video is considered "NEW" (valid for max 3 days from created_at) ----
+function isMediaNew(?array $item): bool {
+    if (empty($item)) return false;
+    // If manually unchecked / marked 0 in admin, not new
+    if (isset($item['is_new']) && !$item['is_new']) {
+        return false;
+    }
+    // Check if created_at timestamp is within the last 3 days (3 * 86400 seconds = 259,200s)
+    if (!empty($item['created_at'])) {
+        $createdTimestamp = strtotime($item['created_at']);
+        if ($createdTimestamp) {
+            $diffSeconds = time() - $createdTimestamp;
+            // Valid if created within the last 3 days (and not in future)
+            return ($diffSeconds >= 0 && $diffSeconds <= (3 * 86400));
+        }
+    }
+    return !empty($item['is_new']);
+}
+
 // ---- Sanitize input ----
 function clean(string $str): string {
     return htmlspecialchars(strip_tags(trim($str)));

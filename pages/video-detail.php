@@ -103,7 +103,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="video-info-box">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
         <div>
-          <h1><?= clean($video['title']) ?> <?= $video['is_new'] ? '<span class="badge-new">NEW</span>' : '' ?></h1>
+          <h1><?= clean($video['title']) ?> <?= isMediaNew($video) ? '<span class="badge-new">NEW</span>' : '' ?></h1>
           <p class="detail-artist">
             Cast / Artist: <strong><?= clean($video['artist_name'] ?? 'Various Artists') ?></strong>
             &bull; <?= clean($video['language']) ?>

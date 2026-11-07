@@ -91,7 +91,7 @@ include __DIR__ . '/../includes/header.php';
     </div>
     <div class="detail-info">
       <span class="detail-type music">🎵 Music Track</span>
-      <h1><?= clean($song['title']) ?> <?= $song['is_new'] ? '<span class="badge-new">NEW</span>' : '' ?></h1>
+      <h1><?= clean($song['title']) ?> <?= isMediaNew($song) ? '<span class="badge-new">NEW</span>' : '' ?></h1>
       <p class="detail-artist">
         <?php if ($song['artist_id_val']): ?>
           <a href="<?= SITE_URL ?>/pages/artist-detail.php?id=<?= $song['artist_id_val'] ?>"><i class="fas fa-microphone-alt"></i> <?= clean($song['artist_name']) ?></a>
