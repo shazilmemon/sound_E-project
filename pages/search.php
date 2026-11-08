@@ -61,12 +61,15 @@ include __DIR__ . '/../includes/header.php';
       <form action="" method="GET" class="search-big-form">
         <div class="search-input-wrap">
           <i class="fas fa-search"></i>
-          <input type="text" name="q" placeholder="Search songs, videos, artists, albums..." value="<?= clean($q) ?>" autofocus>
+          <input type="text" name="q" placeholder="Search songs, videos, artists, albums, genres..." value="<?= clean($q) ?>" autofocus>
+          <?php if ($q): ?>
+            <a href="<?= SITE_URL ?>/pages/search.php" style="color:var(--text-muted); text-decoration:none; font-size:18px; line-height:1;" title="Clear Search">&times;</a>
+          <?php endif; ?>
         </div>
         <select name="type">
-          <option value="all"   <?= $type==='all'  ?'selected':'' ?>>All</option>
-          <option value="music" <?= $type==='music'?'selected':'' ?>>Music</option>
-          <option value="video" <?= $type==='video'?'selected':'' ?>>Video</option>
+          <option value="all"   <?= $type==='all'  ?'selected':'' ?>>All Media</option>
+          <option value="music" <?= $type==='music'?'selected':'' ?>>🎵 Songs Only</option>
+          <option value="video" <?= $type==='video'?'selected':'' ?>>🎬 Videos Only</option>
         </select>
         <select name="lang">
           <option value="">All Languages</option>
@@ -99,16 +102,22 @@ include __DIR__ . '/../includes/header.php';
         <h2 class="section-title mt-40"><span class="accent-bar"></span><i class="fas fa-music"></i> Songs (<?= count($musicResults) ?>)</h2>
         <div class="media-grid">
           <?php foreach ($musicResults as $s): ?>
-          <div class="media-card">
+          <div class="media-card" onclick="location.href='<?= SITE_URL ?>/pages/music-detail.php?id=<?= $s['id'] ?>'">
             <div class="card-thumb">
               <img src="<?= resolveMediaUrl($s['cover_image'], 'cover') ?>" alt="<?= clean($s['title']) ?>" onerror="this.onerror=null; this.src='<?= SITE_URL ?>/assets/images/covers/cover_pop.jpg';">
-              <div class="card-overlay"><a href="<?= SITE_URL ?>/pages/music-detail.php?id=<?= $s['id'] ?>" class="play-circle"><i class="fas fa-play"></i></a></div>
+              <div class="card-overlay"><div class="play-circle"><i class="fas fa-play"></i></div></div>
+              <?php if (isMediaNew($s)): ?><span class="badge-new">NEW</span><?php endif; ?>
+              <span class="badge-type music">🎵</span>
             </div>
             <div class="card-body">
-              <h4><a href="<?= SITE_URL ?>/pages/music-detail.php?id=<?= $s['id'] ?>"><?= clean($s['title']) ?></a></h4>
-              <p class="card-sub"><?= clean($s['artist_name'] ?? '') ?></p>
+              <h4><?= clean($s['title']) ?></h4>
+              <p class="card-sub"><?= clean($s['artist_name'] ?? 'Unknown Artist') ?></p>
               <div class="card-footer">
+                <span class="card-genre"><?= clean($s['genre']) ?></span>
                 <span class="card-lang"><?= clean($s['language']) ?></span>
+              </div>
+              <div class="card-stats">
+                <span><i class="fas fa-headphones"></i> <?= number_format($s['play_count']) ?> plays</span>
                 <span><?= $s['year'] ?></span>
               </div>
             </div>
@@ -121,15 +130,24 @@ include __DIR__ . '/../includes/header.php';
         <h2 class="section-title mt-40"><span class="accent-bar"></span><i class="fas fa-video"></i> Videos (<?= count($videoResults) ?>)</h2>
         <div class="media-grid">
           <?php foreach ($videoResults as $v): ?>
-          <div class="media-card">
+          <div class="media-card" onclick="location.href='<?= SITE_URL ?>/pages/video-detail.php?id=<?= $v['id'] ?>'">
             <div class="card-thumb">
               <img src="<?= resolveMediaUrl($v['cover_image'], 'cover') ?>" alt="<?= clean($v['title']) ?>" onerror="this.onerror=null; this.src='<?= SITE_URL ?>/assets/images/covers/cover_pop.jpg';">
-              <div class="card-overlay"><a href="<?= SITE_URL ?>/pages/video-detail.php?id=<?= $v['id'] ?>" class="play-circle"><i class="fas fa-play"></i></a></div>
-              <span class="badge-type video">🎬</span>
+              <div class="card-overlay"><div class="play-circle"><i class="fas fa-play"></i></div></div>
+              <?php if (isMediaNew($v)): ?><span class="badge-new">NEW</span><?php endif; ?>
+              <span class="badge-type video">🎬 Video</span>
             </div>
             <div class="card-body">
-              <h4><a href="<?= SITE_URL ?>/pages/video-detail.php?id=<?= $v['id'] ?>"><?= clean($v['title']) ?></a></h4>
-              <p class="card-sub"><?= clean($v['artist_name'] ?? '') ?></p>
+              <h4><?= clean($v['title']) ?></h4>
+              <p class="card-sub"><?= clean($v['artist_name'] ?? 'Various Artists') ?></p>
+              <div class="card-footer">
+                <span class="card-genre"><?= clean($v['genre']) ?></span>
+                <span class="card-lang"><?= clean($v['language']) ?></span>
+              </div>
+              <div class="card-stats">
+                <span><i class="fas fa-eye"></i> <?= number_format($v['view_count']) ?> views</span>
+                <span><?= $v['year'] ?></span>
+              </div>
             </div>
           </div>
           <?php endforeach; ?>
