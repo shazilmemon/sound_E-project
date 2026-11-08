@@ -22,12 +22,12 @@
             <span class="brand-tagline"><span class="pulse-dot"></span> SOUND GROUP</span>
           </div>
         </div>
-        <p>Your ultimate destination for music and video entertainment. Explore songs, albums, artists in Regional & English languages.</p>
+        <p><?= clean(getSiteSetting('about_text', 'Your ultimate destination for music and video entertainment. Explore songs, albums, artists in Regional & English languages.')) ?></p>
         <div class="social-links">
-          <a href="#" class="social-link"><i class="fab fa-facebook-f"></i></a>
+          <?php if ($fb = getSiteSetting('social_facebook')): ?><a href="<?= clean($fb) ?>" target="_blank" rel="noopener" class="social-link"><i class="fab fa-facebook-f"></i></a><?php endif; ?>
           <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
-          <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
-          <a href="#" class="social-link"><i class="fab fa-youtube"></i></a>
+          <?php if ($ig = getSiteSetting('social_instagram')): ?><a href="<?= clean($ig) ?>" target="_blank" rel="noopener" class="social-link"><i class="fab fa-instagram"></i></a><?php endif; ?>
+          <?php if ($yt = getSiteSetting('social_youtube')): ?><a href="<?= clean($yt) ?>" target="_blank" rel="noopener" class="social-link"><i class="fab fa-youtube"></i></a><?php endif; ?>
         </div>
       </div>
 

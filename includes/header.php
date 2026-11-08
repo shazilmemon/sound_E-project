@@ -12,7 +12,7 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><?= isset($pageTitle) ? clean($pageTitle) . ' | ' : '' ?>SOUND Group</title>
+  <title><?= isset($pageTitle) ? clean($pageTitle) . ' | ' : '' ?><?= clean(getSiteSetting('site_title', 'SONIXWAVE - SOUND Group')) ?></title>
   <script>
     (function() {
       var savedTheme = localStorage.getItem('sound_theme') || 'dark';

@@ -206,3 +206,20 @@ function getFlash(): ?array {
     return null;
 }
 
+// ---- Site Settings Getter ----
+function getSiteSetting(string $key, string $default = ''): string {
+    static $settingsCache = null;
+    if ($settingsCache === null) {
+        $settingsCache = [];
+        try {
+            $pdo = getDB();
+            $stmt = $pdo->query("SELECT setting_key, setting_value FROM settings");
+            if ($stmt) {
+                $settingsCache = $stmt->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
+            }
+        } catch (Exception $e) {}
+    }
+    return $settingsCache[$key] ?? $default;
+}
+
+

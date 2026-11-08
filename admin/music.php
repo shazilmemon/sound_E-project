@@ -46,6 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $cover_image = 'cover_' . time() . '.' . $ext;
                 move_uploaded_file($_FILES['cover_file']['tmp_name'], COVER_PATH . $cover_image);
             }
+        } elseif (!empty($_POST['cover_url'])) {
+            $cover_image = trim($_POST['cover_url']);
         }
 
         $file_path = $_POST['existing_file'] ?? null;
@@ -55,6 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $file_path = 'audio_' . time() . '.' . $ext;
                 move_uploaded_file($_FILES['music_file']['tmp_name'], UPLOAD_PATH . 'music/' . $file_path);
             }
+        } elseif (!empty($_POST['music_url'])) {
+            $file_path = trim($_POST['music_url']);
         }
 
         if ($action === 'edit' && $id > 0) {
@@ -187,17 +191,19 @@ if ($action === 'edit' && $id > 0) {
 
     <div class="form-row">
       <div class="form-group">
-        <label>Cover Image (JPG, PNG)</label>
+        <label>Cover Image (Upload Image)</label>
         <input type="file" name="cover_file" accept="image/*">
+        <input type="text" name="cover_url" value="<?= clean($editItem['cover_image'] ?? '') ?>" placeholder="Or enter Cover URL / Filename (e.g. cover_pop.jpg or https://...)" style="margin-top:6px;">
         <?php if (!empty($editItem['cover_image'])): ?>
-          <small>Current: <?= clean($editItem['cover_image']) ?></small>
+          <small style="color:var(--text-muted); display:block; margin-top:4px;">Current: <code><?= clean($editItem['cover_image']) ?></code></small>
         <?php endif; ?>
       </div>
       <div class="form-group">
-        <label>Audio File (.mp3, .wav)</label>
+        <label>Audio File (Upload MP3 / Audio)</label>
         <input type="file" name="music_file" accept="audio/*">
+        <input type="text" name="music_url" value="<?= clean($editItem['file_path'] ?? '') ?>" placeholder="Or enter Audio URL / Filename (e.g. song1.mp3 or https://...)" style="margin-top:6px;">
         <?php if (!empty($editItem['file_path'])): ?>
-          <small>Current: <?= clean($editItem['file_path']) ?></small>
+          <small style="color:var(--text-muted); display:block; margin-top:4px;">Current: <code><?= clean($editItem['file_path']) ?></code></small>
         <?php endif; ?>
       </div>
     </div>
@@ -230,6 +236,11 @@ if ($action === 'edit' && $id > 0) {
   <?php
   $q = trim($_GET['search'] ?? '');
   $filterLang = trim($_GET['lang'] ?? '');
+  $filterGenre = trim($_GET['genre'] ?? '');
+  $page = max(1, (int)($_GET['p'] ?? 1));
+  $perPage = 15;
+  $offset = ($page - 1) * $perPage;
+
   $where = ['1=1'];
   $params = [];
 
@@ -242,7 +253,23 @@ if ($action === 'edit' && $id > 0) {
       $where[] = "m.language = ?";
       $params[] = $filterLang;
   }
+  if ($filterGenre) {
+      $where[] = "m.genre = ?";
+      $params[] = $filterGenre;
+  }
 
+  // Count total matches
+  $countStmt = $pdo->prepare("
+      SELECT COUNT(*)
+      FROM music m
+      LEFT JOIN artists a ON m.artist_id = a.id
+      WHERE " . implode(' AND ', $where) . "
+  ");
+  $countStmt->execute($params);
+  $totalRecords = (int)$countStmt->fetchColumn();
+  $totalPages = max(1, ceil($totalRecords / $perPage));
+
+  // Fetch paginated records
   $stmt = $pdo->prepare("
       SELECT m.*, a.name as artist_name, al.title as album_name
       FROM music m
@@ -250,24 +277,34 @@ if ($action === 'edit' && $id > 0) {
       LEFT JOIN albums al ON m.album_id = al.id
       WHERE " . implode(' AND ', $where) . "
       ORDER BY m.id DESC
+      LIMIT $perPage OFFSET $offset
   ");
   $stmt->execute($params);
   $allMusic = $stmt->fetchAll();
   ?>
 
   <div class="admin-filters">
-    <form method="GET" style="display:flex; gap:10px; margin-bottom:15px;">
-      <input type="text" name="search" placeholder="Search track or artist..." value="<?= clean($q) ?>" style="padding:6px 12px; background:var(--dark-3); border:1px solid var(--border); color:#fff; border-radius:6px;">
-      <select name="lang" style="padding:6px 12px; background:var(--dark-3); border:1px solid var(--border); color:#fff; border-radius:6px;">
+    <form method="GET" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:15px; align-items:center;">
+      <input type="text" name="search" placeholder="Search track or artist..." value="<?= clean($q) ?>" style="padding:8px 12px; background:var(--dark-3); border:1px solid var(--border); color:#fff; border-radius:6px; min-width:200px;">
+      <select name="lang" style="padding:8px 12px; background:var(--dark-3); border:1px solid var(--border); color:#fff; border-radius:6px;">
         <option value="">All Languages</option>
         <?php foreach ($langs as $l): ?>
           <option value="<?= clean($l) ?>" <?= $filterLang === $l ? 'selected' : '' ?>><?= clean($l) ?></option>
         <?php endforeach; ?>
       </select>
-      <button type="submit" class="btn btn-outline" style="padding:6px 14px;">Filter</button>
-      <?php if ($q || $filterLang): ?>
-        <a href="<?= SITE_URL ?>/admin/music.php" class="btn btn-outline" style="padding:6px 14px;">Reset</a>
+      <select name="genre" style="padding:8px 12px; background:var(--dark-3); border:1px solid var(--border); color:#fff; border-radius:6px;">
+        <option value="">All Genres</option>
+        <?php foreach ($genres as $g): ?>
+          <option value="<?= clean($g) ?>" <?= $filterGenre === $g ? 'selected' : '' ?>><?= clean($g) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <button type="submit" class="btn btn-outline" style="padding:8px 16px;"><i class="fas fa-filter"></i> Filter</button>
+      <?php if ($q || $filterLang || $filterGenre): ?>
+        <a href="<?= SITE_URL ?>/admin/music.php" class="btn btn-outline" style="padding:8px 16px;">Reset</a>
       <?php endif; ?>
+      <span style="margin-left:auto; font-size:12px; color:var(--text-muted); font-weight:600;">
+        Showing <?= count($allMusic) ?> of <?= $totalRecords ?> tracks
+      </span>
     </form>
   </div>
 
@@ -290,13 +327,13 @@ if ($action === 'edit' && $id > 0) {
     </thead>
     <tbody>
       <?php if (empty($allMusic)): ?>
-        <tr><td colspan="12" style="text-align:center; padding:20px; color:var(--text-muted);">No music records found.</td></tr>
+        <tr><td colspan="12" style="text-align:center; padding:25px; color:var(--text-muted);">No music records found matching your query.</td></tr>
       <?php else: ?>
         <?php foreach ($allMusic as $row): ?>
         <tr>
-          <td><?= $row['id'] ?></td>
+          <td>#<?= $row['id'] ?></td>
           <td>
-            <img src="<?= $row['cover_image'] ? SITE_URL.'/assets/images/covers/'.clean($row['cover_image']) : 'https://picsum.photos/seed/m'.$row['id'].'/50/50' ?>" width="40" height="40" style="border-radius:6px; object-fit:cover;">
+            <img src="<?= resolveMediaUrl($row['cover_image'], 'cover') ?>" width="40" height="40" style="border-radius:6px; object-fit:cover; border:1px solid var(--border);" onerror="this.onerror=null; this.src='<?= SITE_URL ?>/assets/images/covers/cover_pop.jpg';">
           </td>
           <td><strong><?= clean($row['title']) ?></strong></td>
           <td><?= clean($row['artist_name'] ?? 'Single / Unknown') ?></td>
@@ -304,18 +341,39 @@ if ($action === 'edit' && $id > 0) {
           <td><?= clean($row['genre']) ?></td>
           <td><span class="badge-tag"><?= clean($row['language']) ?></span></td>
           <td><?= $row['year'] ?></td>
-          <td><?= number_format($row['play_count']) ?></td>
+          <td><i class="fas fa-headphones" style="font-size:11px; color:var(--text-muted);"></i> <?= number_format($row['play_count']) ?></td>
           <td><?= isMediaNew($row) ? '<span class="badge-new-sm">NEW</span>' : '-' ?></td>
           <td><span class="status-<?= $row['status'] ?>"><?= ucfirst($row['status']) ?></span></td>
-          <td>
-            <a href="<?= SITE_URL ?>/admin/music.php?action=edit&id=<?= $row['id'] ?>" class="tbl-btn" title="Edit"><i class="fas fa-edit"></i></a>
-            <a href="<?= SITE_URL ?>/admin/music.php?action=delete&id=<?= $row['id'] ?>" class="tbl-btn danger" onclick="return confirm('Are you sure you want to delete this track?')" title="Delete"><i class="fas fa-trash"></i></a>
+          <td style="white-space:nowrap;">
+            <button type="button" class="tbl-btn" style="color:var(--primary);" onclick="previewAdminSong('<?= resolveMediaUrl($row['file_path'], 'music') ?>', '<?= clean(addslashes($row['title'])) ?>')" title="Quick Audio Preview"><i class="fas fa-play"></i></button>
+            <a href="<?= SITE_URL ?>/pages/music-detail.php?id=<?= $row['id'] ?>" target="_blank" class="tbl-btn" title="View Public Page"><i class="fas fa-eye"></i></a>
+            <a href="<?= SITE_URL ?>/admin/music.php?action=edit&id=<?= $row['id'] ?>" class="tbl-btn" title="Edit Track"><i class="fas fa-edit"></i></a>
+            <a href="<?= SITE_URL ?>/admin/music.php?action=delete&id=<?= $row['id'] ?>" class="tbl-btn danger" onclick="return confirm('Are you sure you want to delete <?= clean(addslashes($row['title'])) ?>?')" title="Delete"><i class="fas fa-trash"></i></a>
           </td>
         </tr>
         <?php endforeach; ?>
       <?php endif; ?>
     </tbody>
   </table>
+
+  <!-- Pagination -->
+  <?php if ($totalPages > 1): ?>
+  <div class="admin-pagination" style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:20px;">
+    <?php if ($page > 1): ?>
+      <a href="?search=<?= urlencode($q) ?>&lang=<?= urlencode($filterLang) ?>&genre=<?= urlencode($filterGenre) ?>&p=<?= $page - 1 ?>" class="tbl-btn">&laquo; Prev</a>
+    <?php endif; ?>
+    
+    <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
+      <a href="?search=<?= urlencode($q) ?>&lang=<?= urlencode($filterLang) ?>&genre=<?= urlencode($filterGenre) ?>&p=<?= $i ?>" class="tbl-btn <?= $i === $page ? 'active' : '' ?>" style="<?= $i === $page ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : '' ?>">
+        <?= $i ?>
+      </a>
+    <?php endfor; ?>
+
+    <?php if ($page < $totalPages): ?>
+      <a href="?search=<?= urlencode($q) ?>&lang=<?= urlencode($filterLang) ?>&genre=<?= urlencode($filterGenre) ?>&p=<?= $page + 1 ?>" class="tbl-btn">Next &raquo;</a>
+    <?php endif; ?>
+  </div>
+  <?php endif; ?>
 </div>
 <?php endif; ?>
 

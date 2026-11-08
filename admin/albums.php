@@ -37,6 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $cover_image = 'alb_' . time() . '.' . $ext;
                 move_uploaded_file($_FILES['cover_file']['tmp_name'], COVER_PATH . $cover_image);
             }
+        } elseif (!empty($_POST['cover_url'])) {
+            $cover_image = trim($_POST['cover_url']);
         }
 
         if ($action === 'edit' && $id > 0) {
@@ -56,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $artists = $pdo->query("SELECT id, name FROM artists ORDER BY name ASC")->fetchAll();
+$langs   = $pdo->query("SELECT name FROM categories WHERE type='language' ORDER BY name ASC")->fetchAll(PDO::FETCH_COLUMN);
 $editItem = null;
 if ($action === 'edit' && $id > 0) {
     $stmt = $pdo->prepare("SELECT * FROM albums WHERE id = ?");
@@ -63,14 +66,26 @@ if ($action === 'edit' && $id > 0) {
     $editItem = $stmt->fetch();
 }
 
-$albums = $pdo->query("
+$q = trim($_GET['search'] ?? '');
+$where = ['1=1'];
+$params = [];
+if ($q) {
+    $where[] = "(al.title LIKE ? OR a.name LIKE ?)";
+    $params[] = "%$q%";
+    $params[] = "%$q%";
+}
+
+$stmt = $pdo->prepare("
     SELECT al.*, a.name as artist_name, COUNT(m.id) as track_count
     FROM albums al
     LEFT JOIN artists a ON al.artist_id = a.id
     LEFT JOIN music m ON m.album_id = al.id
+    WHERE " . implode(' AND ', $where) . "
     GROUP BY al.id
     ORDER BY al.year DESC
-")->fetchAll();
+");
+$stmt->execute($params);
+$albums = $stmt->fetchAll();
 ?>
 
 <div class="admin-two-col">
@@ -106,12 +121,20 @@ $albums = $pdo->query("
         </div>
         <div class="form-group">
           <label>Language</label>
-          <input type="text" name="language" value="<?= clean($editItem['language'] ?? 'Hindi') ?>">
+          <select name="language">
+            <?php foreach ($langs as $l): ?>
+              <option value="<?= clean($l) ?>" <?= (isset($editItem) && $editItem['language'] === $l) ? 'selected' : '' ?>><?= clean($l) ?></option>
+            <?php endforeach; ?>
+          </select>
         </div>
       </div>
       <div class="form-group">
-        <label>Album Artwork</label>
+        <label>Album Artwork (Upload or URL)</label>
         <input type="file" name="cover_file" accept="image/*">
+        <input type="text" name="cover_url" value="<?= clean($editItem['cover_image'] ?? '') ?>" placeholder="Or enter Artwork URL / Filename..." style="margin-top:6px;">
+        <?php if (!empty($editItem['cover_image'])): ?>
+          <small style="color:var(--text-muted); display:block; margin-top:4px;">Current: <code><?= clean($editItem['cover_image']) ?></code></small>
+        <?php endif; ?>
       </div>
       <div class="form-group">
         <label>Description</label>
@@ -127,8 +150,15 @@ $albums = $pdo->query("
   <!-- Albums List -->
   <div class="admin-box">
     <div class="box-head">
-      <h3><i class="fas fa-compact-disc"></i> Albums List</h3>
+      <h3><i class="fas fa-compact-disc"></i> Albums List (<?= count($albums) ?>)</h3>
     </div>
+    
+    <form method="GET" style="display:flex; gap:8px; margin-bottom:15px;">
+      <input type="text" name="search" placeholder="Search album or artist..." value="<?= clean($q) ?>" style="padding:6px 12px; background:var(--dark-3); border:1px solid var(--border); color:#fff; border-radius:6px; flex:1;">
+      <button type="submit" class="btn btn-outline" style="padding:6px 12px;">Search</button>
+      <?php if ($q): ?><a href="<?= SITE_URL ?>/admin/albums.php" class="btn btn-outline" style="padding:6px 12px;">Reset</a><?php endif; ?>
+    </form>
+
     <table class="admin-table">
       <thead>
         <tr>
@@ -141,21 +171,26 @@ $albums = $pdo->query("
         </tr>
       </thead>
       <tbody>
-        <?php foreach ($albums as $al): ?>
-        <tr>
-          <td>
-            <img src="<?= $al['cover_image'] ? SITE_URL.'/assets/images/covers/'.clean($al['cover_image']) : 'https://picsum.photos/seed/al'.$al['id'].'/40/40' ?>" width="35" height="35" style="border-radius:4px; object-fit:cover;">
-          </td>
-          <td><strong><?= clean($al['title']) ?></strong></td>
-          <td><?= clean($al['artist_name'] ?? 'Soundtrack') ?></td>
-          <td><?= $al['year'] ?></td>
-          <td><?= $al['track_count'] ?> tracks</td>
-          <td>
-            <a href="<?= SITE_URL ?>/admin/albums.php?action=edit&id=<?= $al['id'] ?>" class="tbl-btn" title="Edit"><i class="fas fa-edit"></i></a>
-            <a href="<?= SITE_URL ?>/admin/albums.php?action=delete&id=<?= $al['id'] ?>" class="tbl-btn danger" onclick="return confirm('Delete this album?')" title="Delete"><i class="fas fa-trash"></i></a>
-          </td>
-        </tr>
-        <?php endforeach; ?>
+        <?php if (empty($albums)): ?>
+          <tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">No albums found.</td></tr>
+        <?php else: ?>
+          <?php foreach ($albums as $al): ?>
+          <tr>
+            <td>
+              <img src="<?= resolveMediaUrl($al['cover_image'], 'cover') ?>" width="38" height="38" style="border-radius:6px; object-fit:cover; border:1px solid var(--border);" onerror="this.onerror=null; this.src='<?= SITE_URL ?>/assets/images/covers/cover_pop.jpg';">
+            </td>
+            <td><strong><?= clean($al['title']) ?></strong></td>
+            <td><?= clean($al['artist_name'] ?? 'Soundtrack') ?></td>
+            <td><?= $al['year'] ?></td>
+            <td><span class="badge-tag"><?= $al['track_count'] ?> tracks</span></td>
+            <td style="white-space:nowrap;">
+              <a href="<?= SITE_URL ?>/pages/album-detail.php?id=<?= $al['id'] ?>" target="_blank" class="tbl-btn" title="View Public Album"><i class="fas fa-eye"></i></a>
+              <a href="<?= SITE_URL ?>/admin/albums.php?action=edit&id=<?= $al['id'] ?>" class="tbl-btn" title="Edit"><i class="fas fa-edit"></i></a>
+              <a href="<?= SITE_URL ?>/admin/albums.php?action=delete&id=<?= $al['id'] ?>" class="tbl-btn danger" onclick="return confirm('Delete this album?')" title="Delete"><i class="fas fa-trash"></i></a>
+            </td>
+          </tr>
+          <?php endforeach; ?>
+        <?php endif; ?>
       </tbody>
     </table>
   </div>

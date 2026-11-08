@@ -28,22 +28,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($type) || empty($name)) {
         $error = 'Category Type and Name are required.';
     } else {
-        $stmt = $pdo->prepare("INSERT INTO categories (type, name) VALUES (?, ?)");
-        $stmt->execute([$type, $name]);
-        setFlash('success', 'Category added successfully.');
+        if ($action === 'edit' && $id > 0) {
+            $stmt = $pdo->prepare("UPDATE categories SET type = ?, name = ? WHERE id = ?");
+            $stmt->execute([$type, $name, $id]);
+            setFlash('success', 'Category updated successfully.');
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO categories (type, name) VALUES (?, ?)");
+            $stmt->execute([$type, $name]);
+            setFlash('success', 'Category added successfully.');
+        }
         header('Location: ' . SITE_URL . '/admin/categories.php');
         exit;
     }
 }
 
-$categories = $pdo->query("SELECT * FROM categories ORDER BY type ASC, name ASC")->fetchAll();
+$editItem = null;
+if ($action === 'edit' && $id > 0) {
+    $stmt = $pdo->prepare("SELECT * FROM categories WHERE id = ?");
+    $stmt->execute([$id]);
+    $editItem = $stmt->fetch();
+}
+
+$filterType = trim($_GET['type'] ?? '');
+$where = '1=1';
+$params = [];
+if ($filterType) {
+    $where = 'type = ?';
+    $params[] = $filterType;
+}
+$stmt = $pdo->prepare("SELECT * FROM categories WHERE $where ORDER BY type ASC, name ASC");
+$stmt->execute($params);
+$categories = $stmt->fetchAll();
 ?>
 
 <div class="admin-two-col">
-  <!-- Add Category Form -->
+  <!-- Add / Edit Category Form -->
   <div class="admin-box">
     <div class="box-head">
-      <h3>➕ Create New Category</h3>
+      <h3><?= $action === 'edit' ? '✏️ Edit Category' : '➕ Create New Category' ?></h3>
     </div>
     <?php if ($error): ?>
       <div class="alert alert-danger"><?= clean($error) ?></div>
@@ -52,16 +74,19 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY type ASC, name ASC"
       <div class="form-group">
         <label>Category Type *</label>
         <select name="type" required>
-          <option value="genre">Genre (e.g. Pop, Rock, Classical, Jazz)</option>
-          <option value="language">Language (e.g. Hindi, English, Punjabi, Telugu)</option>
-          <option value="year">Year / Era (e.g. 2024, 2023, 90s, 2000s)</option>
+          <option value="genre" <?= (isset($editItem) && $editItem['type'] === 'genre') ? 'selected' : '' ?>>Genre (e.g. Pop, Rock, Classical, Jazz)</option>
+          <option value="language" <?= (isset($editItem) && $editItem['type'] === 'language') ? 'selected' : '' ?>>Language (e.g. Hindi, English, Punjabi, Telugu)</option>
+          <option value="year" <?= (isset($editItem) && $editItem['type'] === 'year') ? 'selected' : '' ?>>Year / Era (e.g. 2024, 2023, 90s, 2000s)</option>
         </select>
       </div>
       <div class="form-group">
         <label>Category Value / Name *</label>
-        <input type="text" name="name" required placeholder="e.g. Sufi, Spanish, 2025">
+        <input type="text" name="name" value="<?= clean($editItem['name'] ?? '') ?>" required placeholder="e.g. Sufi, Spanish, 2025">
       </div>
-      <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Save Category</button>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= $action === 'edit' ? 'Update Category' : 'Save Category' ?></button>
+      <?php if ($action === 'edit'): ?>
+        <a href="<?= SITE_URL ?>/admin/categories.php" class="btn btn-outline">Cancel</a>
+      <?php endif; ?>
     </form>
 
     <div style="margin-top:20px; font-size:12px; color:var(--text-muted); line-height:1.6;">
@@ -76,8 +101,17 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY type ASC, name ASC"
   <!-- Categories List -->
   <div class="admin-box">
     <div class="box-head">
-      <h3><i class="fas fa-tags"></i> Existing Categories</h3>
+      <h3><i class="fas fa-tags"></i> Existing Categories (<?= count($categories) ?>)</h3>
     </div>
+
+    <!-- Type filter tabs -->
+    <div style="display:flex; gap:8px; margin-bottom:15px; flex-wrap:wrap;">
+      <a href="<?= SITE_URL ?>/admin/categories.php" class="tbl-btn <?= empty($filterType) ? 'active' : '' ?>">All</a>
+      <a href="<?= SITE_URL ?>/admin/categories.php?type=genre" class="tbl-btn <?= $filterType === 'genre' ? 'active' : '' ?>">Genres</a>
+      <a href="<?= SITE_URL ?>/admin/categories.php?type=language" class="tbl-btn <?= $filterType === 'language' ? 'active' : '' ?>">Languages</a>
+      <a href="<?= SITE_URL ?>/admin/categories.php?type=year" class="tbl-btn <?= $filterType === 'year' ? 'active' : '' ?>">Years</a>
+    </div>
+
     <table class="admin-table">
       <thead>
         <tr>
@@ -87,15 +121,20 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY type ASC, name ASC"
         </tr>
       </thead>
       <tbody>
-        <?php foreach ($categories as $cat): ?>
-        <tr>
-          <td><span class="badge-tag"><?= strtoupper(clean($cat['type'])) ?></span></td>
-          <td><strong><?= clean($cat['name']) ?></strong></td>
-          <td>
-            <a href="<?= SITE_URL ?>/admin/categories.php?action=delete&id=<?= $cat['id'] ?>" class="tbl-btn danger" onclick="return confirm('Delete this category?')" title="Delete"><i class="fas fa-trash"></i></a>
-          </td>
-        </tr>
-        <?php endforeach; ?>
+        <?php if (empty($categories)): ?>
+          <tr><td colspan="3" style="text-align:center; padding:20px; color:var(--text-muted);">No categories found.</td></tr>
+        <?php else: ?>
+          <?php foreach ($categories as $cat): ?>
+          <tr>
+            <td><span class="badge-tag"><?= strtoupper(clean($cat['type'])) ?></span></td>
+            <td><strong><?= clean($cat['name']) ?></strong></td>
+            <td style="white-space:nowrap;">
+              <a href="<?= SITE_URL ?>/admin/categories.php?action=edit&id=<?= $cat['id'] ?>" class="tbl-btn" title="Edit"><i class="fas fa-edit"></i></a>
+              <a href="<?= SITE_URL ?>/admin/categories.php?action=delete&id=<?= $cat['id'] ?>" class="tbl-btn danger" onclick="return confirm('Delete this category?')" title="Delete"><i class="fas fa-trash"></i></a>
+            </td>
+          </tr>
+          <?php endforeach; ?>
+        <?php endif; ?>
       </tbody>
     </table>
   </div>

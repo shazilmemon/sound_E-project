@@ -51,6 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'All fields (User ID, Name, Email, Phone, Address) are mandatory.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address.';
+    } elseif (strlen(preg_replace('/[^0-9]/', '', $phone)) < 10) {
+        $error = 'Please enter a valid phone number with dial code (at least 10-11 digits).';
     } else {
         if ($action === 'edit' && $id > 0) {
             // Check unique user_id & email excluding current user
@@ -100,7 +102,35 @@ if ($action === 'edit' && $id > 0) {
     $editItem = $stmt->fetch();
 }
 
-$users = $pdo->query("SELECT * FROM users ORDER BY id DESC")->fetchAll();
+$q = trim($_GET['search'] ?? '');
+$filterRole = trim($_GET['role'] ?? '');
+$page = max(1, (int)($_GET['p'] ?? 1));
+$perPage = 15;
+$offset = ($page - 1) * $perPage;
+
+$where = ['1=1'];
+$params = [];
+
+if ($q) {
+    $where[] = "(user_id LIKE ? OR full_name LIKE ? OR email LIKE ? OR phone LIKE ?)";
+    $params[] = "%$q%";
+    $params[] = "%$q%";
+    $params[] = "%$q%";
+    $params[] = "%$q%";
+}
+if ($filterRole && in_array($filterRole, ['user', 'admin'])) {
+    $where[] = "role = ?";
+    $params[] = $filterRole;
+}
+
+$countStmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE " . implode(' AND ', $where));
+$countStmt->execute($params);
+$totalRecords = (int)$countStmt->fetchColumn();
+$totalPages = max(1, ceil($totalRecords / $perPage));
+
+$stmt = $pdo->prepare("SELECT * FROM users WHERE " . implode(' AND ', $where) . " ORDER BY id DESC LIMIT $perPage OFFSET $offset");
+$stmt->execute($params);
+$users = $stmt->fetchAll();
 ?>
 
 <?php if ($action === 'add' || $action === 'edit'): ?>
@@ -133,7 +163,7 @@ $users = $pdo->query("SELECT * FROM users ORDER BY id DESC")->fetchAll();
       </div>
       <div class="form-group">
         <label>Phone Number *</label>
-        <input type="text" name="phone" value="<?= clean($editItem['phone'] ?? '') ?>" required placeholder="+91 XXXXXXXXXX">
+        <input type="text" name="phone" value="<?= clean($editItem['phone'] ?? '') ?>" required placeholder="+92 3XXXXXXXXX">
       </div>
     </div>
 
@@ -145,7 +175,12 @@ $users = $pdo->query("SELECT * FROM users ORDER BY id DESC")->fetchAll();
     <div class="form-row">
       <div class="form-group">
         <label>Password <?= $action === 'edit' ? '(Leave blank to keep unchanged)' : '*' ?></label>
-        <input type="password" name="password" <?= $action === 'add' ? 'required' : '' ?> placeholder="Min 6 characters">
+        <div class="input-icon" style="position:relative;">
+          <input type="password" name="password" id="adminUserPass" <?= $action === 'add' ? 'required' : '' ?> placeholder="Min 6 characters">
+          <span class="toggle-pass" onclick="toggleAdminPass('adminUserPass', this)" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; color:#888;">
+            <i class="fas fa-eye"></i>
+          </span>
+        </div>
       </div>
       <div class="form-group">
         <label>Role</label>
@@ -167,13 +202,45 @@ $users = $pdo->query("SELECT * FROM users ORDER BY id DESC")->fetchAll();
   </form>
 </div>
 
+<script>
+function toggleAdminPass(id, btn) {
+  const input = document.getElementById(id);
+  if (!input) return;
+  const icon = btn.querySelector('i');
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.classList.remove('fa-eye');
+    icon.classList.add('fa-eye-slash');
+  } else {
+    input.type = 'password';
+    icon.classList.remove('fa-eye-slash');
+    icon.classList.add('fa-eye');
+  }
+}
+</script>
+
 <?php else: ?>
 
 <!-- Users List -->
 <div class="admin-box">
   <div class="box-head">
-    <h3><i class="fas fa-users"></i> Users &amp; Logins Directory</h3>
+    <h3><i class="fas fa-users"></i> Users &amp; Logins Directory (<?= count($users) ?>)</h3>
     <a href="<?= SITE_URL ?>/admin/users.php?action=add" class="btn btn-primary"><i class="fas fa-user-plus"></i> Add New User</a>
+  </div>
+
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
+    <div style="display:flex; gap:8px;">
+      <a href="<?= SITE_URL ?>/admin/users.php" class="tbl-btn <?= empty($filterRole) ? 'active' : '' ?>">All Users</a>
+      <a href="<?= SITE_URL ?>/admin/users.php?role=user" class="tbl-btn <?= $filterRole === 'user' ? 'active' : '' ?>">Standard Users</a>
+      <a href="<?= SITE_URL ?>/admin/users.php?role=admin" class="tbl-btn <?= $filterRole === 'admin' ? 'active' : '' ?>">Admins</a>
+    </div>
+
+    <form method="GET" style="display:flex; gap:8px;">
+      <?php if ($filterRole): ?><input type="hidden" name="role" value="<?= clean($filterRole) ?>"><?php endif; ?>
+      <input type="text" name="search" placeholder="Search name, ID, email..." value="<?= clean($q) ?>" style="padding:6px 12px; background:var(--dark-3); border:1px solid var(--border); color:#fff; border-radius:6px; min-width:200px;">
+      <button type="submit" class="btn btn-outline" style="padding:6px 12px;">Search</button>
+      <?php if ($q): ?><a href="<?= SITE_URL ?>/admin/users.php<?= $filterRole ? '?role='.urlencode($filterRole) : '' ?>" class="btn btn-outline" style="padding:6px 12px;">Reset</a><?php endif; ?>
+    </form>
   </div>
 
   <table class="admin-table">
@@ -191,30 +258,53 @@ $users = $pdo->query("SELECT * FROM users ORDER BY id DESC")->fetchAll();
       </tr>
     </thead>
     <tbody>
-      <?php foreach ($users as $u): ?>
-      <tr>
-        <td><?= $u['id'] ?></td>
-        <td><strong>@<?= clean($u['user_id']) ?></strong></td>
-        <td><?= clean($u['full_name']) ?></td>
-        <td><?= clean($u['email']) ?></td>
-        <td><?= clean($u['phone']) ?></td>
-        <td style="max-width:140px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;"><?= clean($u['address']) ?></td>
-        <td><span class="user-role role-<?= $u['role'] ?>"><?= ucfirst($u['role']) ?></span></td>
-        <td>
-          <a href="<?= SITE_URL ?>/admin/users.php?action=toggle&id=<?= $u['id'] ?>" title="Click to toggle status" class="status-<?= $u['status'] ?>">
-            ● <?= ucfirst($u['status']) ?>
-          </a>
-        </td>
-        <td>
-          <a href="<?= SITE_URL ?>/admin/users.php?action=edit&id=<?= $u['id'] ?>" class="tbl-btn" title="Edit"><i class="fas fa-edit"></i></a>
-          <?php if ($u['id'] != $_SESSION['user_id']): ?>
-            <a href="<?= SITE_URL ?>/admin/users.php?action=delete&id=<?= $u['id'] ?>" class="tbl-btn danger" onclick="return confirm('Delete this user?')" title="Delete"><i class="fas fa-trash"></i></a>
-          <?php endif; ?>
-        </td>
-      </tr>
-      <?php endforeach; ?>
+      <?php if (empty($users)): ?>
+        <tr><td colspan="9" style="text-align:center; padding:25px; color:var(--text-muted);">No users found.</td></tr>
+      <?php else: ?>
+        <?php foreach ($users as $u): ?>
+        <tr>
+          <td>#<?= $u['id'] ?></td>
+          <td><strong>@<?= clean($u['user_id']) ?></strong></td>
+          <td><?= clean($u['full_name']) ?></td>
+          <td><?= clean($u['email']) ?></td>
+          <td><?= clean($u['phone']) ?></td>
+          <td style="max-width:140px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="<?= clean($u['address']) ?>"><?= clean($u['address']) ?></td>
+          <td><span class="user-role role-<?= $u['role'] ?>"><?= ucfirst($u['role']) ?></span></td>
+          <td>
+            <a href="<?= SITE_URL ?>/admin/users.php?action=toggle&id=<?= $u['id'] ?>" title="Click to toggle status (Active/Inactive)" class="status-<?= $u['status'] ?>" style="text-decoration:none; font-weight:600;">
+              ● <?= ucfirst($u['status']) ?>
+            </a>
+          </td>
+          <td style="white-space:nowrap;">
+            <a href="<?= SITE_URL ?>/admin/users.php?action=edit&id=<?= $u['id'] ?>" class="tbl-btn" title="Edit User"><i class="fas fa-edit"></i></a>
+            <?php if ($u['id'] != $_SESSION['user_id']): ?>
+              <a href="<?= SITE_URL ?>/admin/users.php?action=delete&id=<?= $u['id'] ?>" class="tbl-btn danger" onclick="return confirm('Delete user @<?= clean(addslashes($u['user_id'])) ?> permanently?')" title="Delete"><i class="fas fa-trash"></i></a>
+            <?php endif; ?>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      <?php endif; ?>
     </tbody>
   </table>
+
+  <!-- Pagination -->
+  <?php if ($totalPages > 1): ?>
+  <div class="admin-pagination" style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:20px;">
+    <?php if ($page > 1): ?>
+      <a href="?search=<?= urlencode($q) ?>&role=<?= urlencode($filterRole) ?>&p=<?= $page - 1 ?>" class="tbl-btn">&laquo; Prev</a>
+    <?php endif; ?>
+    
+    <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
+      <a href="?search=<?= urlencode($q) ?>&role=<?= urlencode($filterRole) ?>&p=<?= $i ?>" class="tbl-btn <?= $i === $page ? 'active' : '' ?>" style="<?= $i === $page ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : '' ?>">
+        <?= $i ?>
+      </a>
+    <?php endfor; ?>
+
+    <?php if ($page < $totalPages): ?>
+      <a href="?search=<?= urlencode($q) ?>&role=<?= urlencode($filterRole) ?>&p=<?= $page + 1 ?>" class="tbl-btn">Next &raquo;</a>
+    <?php endif; ?>
+  </div>
+  <?php endif; ?>
 </div>
 <?php endif; ?>
 

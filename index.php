@@ -9,24 +9,30 @@ require_once __DIR__ . '/includes/auth.php';
 $pdo       = getDB();
 $pageTitle = 'Home';
 
-// Latest 8 music (ordered by latest year & popularity)
+// Latest music (ordered by latest year & popularity)
+$musicLimit = (int)getSiteSetting('homepage_music_cnt', '8');
+if ($musicLimit < 1) $musicLimit = 8;
+
+$videoLimit = (int)getSiteSetting('homepage_video_cnt', '8');
+if ($videoLimit < 1) $videoLimit = 8;
+
 $latestMusic = $pdo->query("
     SELECT m.*, a.name AS artist_name
     FROM music m
     LEFT JOIN artists a ON m.artist_id = a.id
     WHERE m.status = 'active'
     ORDER BY m.year DESC, m.play_count DESC
-    LIMIT 8
+    LIMIT $musicLimit
 ")->fetchAll();
 
-// Latest 8 videos
+// Latest videos
 $latestVideos = $pdo->query("
     SELECT v.*, a.name AS artist_name
     FROM videos v
     LEFT JOIN artists a ON v.artist_id = a.id
     WHERE v.status = 'active'
     ORDER BY v.year DESC, v.view_count DESC
-    LIMIT 8
+    LIMIT $videoLimit
 ")->fetchAll();
 
 // Trending media (by plays / views)

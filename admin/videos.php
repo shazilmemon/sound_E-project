@@ -45,6 +45,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $cover_image = 'vid_' . time() . '.' . $ext;
                 move_uploaded_file($_FILES['cover_file']['tmp_name'], COVER_PATH . $cover_image);
             }
+        } elseif (!empty($_POST['cover_url'])) {
+            $cover_image = trim($_POST['cover_url']);
+        }
+
+        $video_url = trim($_POST['file_path'] ?? '');
+        if (!empty($_FILES['video_file']['name'])) {
+            $vExt = strtolower(pathinfo($_FILES['video_file']['name'], PATHINFO_EXTENSION));
+            if (in_array($vExt, ['mp4', 'webm', 'ogg'])) {
+                $video_url = 'vid_' . time() . '.' . $vExt;
+                move_uploaded_file($_FILES['video_file']['tmp_name'], UPLOAD_PATH . 'videos/' . $video_url);
+            }
         }
 
         if ($action === 'edit' && $id > 0) {
@@ -154,23 +165,33 @@ if ($action === 'edit' && $id > 0) {
 
     <div class="form-row">
       <div class="form-group">
-        <label>Video File Path (.mp4 filename or video URL)</label>
-        <input type="text" name="file_path" value="<?= clean($editItem['file_path'] ?? '') ?>" placeholder="e.g. video1.mp4 or MP4 URL">
+        <label>Upload Video (.mp4 file)</label>
+        <input type="file" name="video_file" accept="video/mp4,video/webm,video/ogg">
+        <?php if (!empty($editItem['file_path'])): ?>
+          <small style="color:var(--text-muted); display:block; margin-top:4px;">Current file: <code><?= clean($editItem['file_path']) ?></code></small>
+        <?php endif; ?>
       </div>
+      <div class="form-group">
+        <label>Or Video Filename / URL</label>
+        <input type="text" name="file_path" value="<?= clean($editItem['file_path'] ?? '') ?>" placeholder="e.g. video1.mp4 or https://...">
+      </div>
+    </div>
+    <div class="form-row">
       <div class="form-group">
         <label>Duration (MM:SS)</label>
         <input type="text" name="duration" value="<?= clean($editItem['duration'] ?? '4:00') ?>">
       </div>
-    </div>
-
-    <div class="form-row">
       <div class="form-group">
         <label>Video Poster / Thumbnail</label>
         <input type="file" name="cover_file" accept="image/*">
+        <input type="text" name="cover_url" value="<?= clean($editItem['cover_image'] ?? '') ?>" placeholder="Or enter Thumbnail URL / Filename..." style="margin-top:6px;">
         <?php if (!empty($editItem['cover_image'])): ?>
-          <small>Current: <?= clean($editItem['cover_image']) ?></small>
+          <small style="color:var(--text-muted); display:block; margin-top:4px;">Current: <code><?= clean($editItem['cover_image']) ?></code></small>
         <?php endif; ?>
       </div>
+    </div>
+
+    <div class="form-row">
       <div class="form-group">
         <label>Status</label>
         <select name="status">
@@ -178,17 +199,16 @@ if ($action === 'edit' && $id > 0) {
           <option value="inactive" <?= (isset($editItem) && $editItem['status'] === 'inactive') ? 'selected' : '' ?>>Inactive</option>
         </select>
       </div>
+      <div class="form-group" style="display:flex; align-items:center; padding-top:24px;">
+        <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" name="is_new" value="1" <?= (!isset($editItem) || !empty($editItem['is_new'])) ? 'checked' : '' ?>>
+          Show "NEW" badge on website (Valid for 3 days)
+        </label>
+      </div>
     </div>
 
     <div class="form-group">
-      <label>
-        <input type="checkbox" name="is_new" value="1" <?= (!isset($editItem) || !empty($editItem['is_new'])) ? 'checked' : '' ?>>
-        Show "NEW" flashing icon on website
-      </label>
-    </div>
-
-    <div class="form-group">
-      <label>Video Description</label>
+      <label>Video Description / Information</label>
       <textarea name="description" rows="3"><?= clean($editItem['description'] ?? '') ?></textarea>
     </div>
 
@@ -206,15 +226,78 @@ if ($action === 'edit' && $id > 0) {
   </div>
 
   <?php
-  $stmt = $pdo->query("
+  $q = trim($_GET['search'] ?? '');
+  $filterLang = trim($_GET['lang'] ?? '');
+  $filterGenre = trim($_GET['genre'] ?? '');
+  $page = max(1, (int)($_GET['p'] ?? 1));
+  $perPage = 15;
+  $offset = ($page - 1) * $perPage;
+
+  $where = ['1=1'];
+  $params = [];
+
+  if ($q) {
+      $where[] = "(v.title LIKE ? OR a.name LIKE ?)";
+      $params[] = "%$q%";
+      $params[] = "%$q%";
+  }
+  if ($filterLang) {
+      $where[] = "v.language = ?";
+      $params[] = $filterLang;
+  }
+  if ($filterGenre) {
+      $where[] = "v.genre = ?";
+      $params[] = $filterGenre;
+  }
+
+  // Count total matches
+  $countStmt = $pdo->prepare("
+      SELECT COUNT(*)
+      FROM videos v
+      LEFT JOIN artists a ON v.artist_id = a.id
+      WHERE " . implode(' AND ', $where) . "
+  ");
+  $countStmt->execute($params);
+  $totalRecords = (int)$countStmt->fetchColumn();
+  $totalPages = max(1, ceil($totalRecords / $perPage));
+
+  $stmt = $pdo->prepare("
       SELECT v.*, a.name as artist_name, al.title as album_name
       FROM videos v
       LEFT JOIN artists a ON v.artist_id = a.id
       LEFT JOIN albums al ON v.album_id = al.id
+      WHERE " . implode(' AND ', $where) . "
       ORDER BY v.id DESC
+      LIMIT $perPage OFFSET $offset
   ");
+  $stmt->execute($params);
   $allVideos = $stmt->fetchAll();
   ?>
+
+  <div class="admin-filters">
+    <form method="GET" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:15px; align-items:center;">
+      <input type="text" name="search" placeholder="Search title or artist..." value="<?= clean($q) ?>" style="padding:8px 12px; background:var(--dark-3); border:1px solid var(--border); color:#fff; border-radius:6px; min-width:200px;">
+      <select name="lang" style="padding:8px 12px; background:var(--dark-3); border:1px solid var(--border); color:#fff; border-radius:6px;">
+        <option value="">All Languages</option>
+        <?php foreach ($langs as $l): ?>
+          <option value="<?= clean($l) ?>" <?= $filterLang === $l ? 'selected' : '' ?>><?= clean($l) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <select name="genre" style="padding:8px 12px; background:var(--dark-3); border:1px solid var(--border); color:#fff; border-radius:6px;">
+        <option value="">All Genres</option>
+        <?php foreach ($genres as $g): ?>
+          <option value="<?= clean($g) ?>" <?= $filterGenre === $g ? 'selected' : '' ?>><?= clean($g) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <button type="submit" class="btn btn-outline" style="padding:8px 16px;"><i class="fas fa-filter"></i> Filter</button>
+      <?php if ($q || $filterLang || $filterGenre): ?>
+        <a href="<?= SITE_URL ?>/admin/videos.php" class="btn btn-outline" style="padding:8px 16px;">Reset</a>
+      <?php endif; ?>
+      <span style="margin-left:auto; font-size:12px; color:var(--text-muted); font-weight:600;">
+        Showing <?= count($allVideos) ?> of <?= $totalRecords ?> videos
+      </span>
+    </form>
+  </div>
 
   <table class="admin-table">
     <thead>
@@ -234,31 +317,52 @@ if ($action === 'edit' && $id > 0) {
     </thead>
     <tbody>
       <?php if (empty($allVideos)): ?>
-        <tr><td colspan="11" style="text-align:center; padding:20px; color:var(--text-muted);">No videos found.</td></tr>
+        <tr><td colspan="11" style="text-align:center; padding:25px; color:var(--text-muted);">No videos found matching your query.</td></tr>
       <?php else: ?>
         <?php foreach ($allVideos as $row): ?>
         <tr>
-          <td><?= $row['id'] ?></td>
+          <td>#<?= $row['id'] ?></td>
           <td>
-            <img src="<?= $row['cover_image'] ? SITE_URL.'/assets/images/covers/'.clean($row['cover_image']) : 'https://picsum.photos/seed/v'.$row['id'].'/50/50' ?>" width="40" height="40" style="border-radius:6px; object-fit:cover;">
+            <img src="<?= resolveMediaUrl($row['cover_image'], 'cover') ?>" width="42" height="42" style="border-radius:6px; object-fit:cover; border:1px solid var(--border);" onerror="this.onerror=null; this.src='<?= SITE_URL ?>/assets/images/covers/cover_pop.jpg';">
           </td>
           <td><strong><?= clean($row['title']) ?></strong></td>
-          <td><?= clean($row['artist_name'] ?? 'Unknown') ?></td>
+          <td><?= clean($row['artist_name'] ?? 'Various') ?></td>
           <td><?= clean($row['genre']) ?></td>
           <td><span class="badge-tag"><?= clean($row['language']) ?></span></td>
           <td><?= $row['year'] ?></td>
-          <td><?= number_format($row['view_count']) ?></td>
+          <td><i class="fas fa-eye" style="font-size:11px; color:var(--text-muted);"></i> <?= number_format($row['view_count']) ?></td>
           <td><?= isMediaNew($row) ? '<span class="badge-new-sm">NEW</span>' : '-' ?></td>
           <td><span class="status-<?= $row['status'] ?>"><?= ucfirst($row['status']) ?></span></td>
-          <td>
-            <a href="<?= SITE_URL ?>/admin/videos.php?action=edit&id=<?= $row['id'] ?>" class="tbl-btn" title="Edit"><i class="fas fa-edit"></i></a>
-            <a href="<?= SITE_URL ?>/admin/videos.php?action=delete&id=<?= $row['id'] ?>" class="tbl-btn danger" onclick="return confirm('Are you sure to delete this video?')" title="Delete"><i class="fas fa-trash"></i></a>
+          <td style="white-space:nowrap;">
+            <button type="button" class="tbl-btn" style="color:var(--primary);" onclick="previewAdminVideo('<?= resolveMediaUrl($row['file_path'], 'video') ?>', '<?= clean(addslashes($row['title'])) ?>')" title="Quick Video Preview"><i class="fas fa-play"></i></button>
+            <a href="<?= SITE_URL ?>/pages/video-detail.php?id=<?= $row['id'] ?>" target="_blank" class="tbl-btn" title="View Public Video Page"><i class="fas fa-eye"></i></a>
+            <a href="<?= SITE_URL ?>/admin/videos.php?action=edit&id=<?= $row['id'] ?>" class="tbl-btn" title="Edit Video"><i class="fas fa-edit"></i></a>
+            <a href="<?= SITE_URL ?>/admin/videos.php?action=delete&id=<?= $row['id'] ?>" class="tbl-btn danger" onclick="return confirm('Are you sure you want to delete <?= clean(addslashes($row['title'])) ?>?')" title="Delete"><i class="fas fa-trash"></i></a>
           </td>
         </tr>
         <?php endforeach; ?>
       <?php endif; ?>
     </tbody>
   </table>
+
+  <!-- Pagination -->
+  <?php if ($totalPages > 1): ?>
+  <div class="admin-pagination" style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:20px;">
+    <?php if ($page > 1): ?>
+      <a href="?search=<?= urlencode($q) ?>&lang=<?= urlencode($filterLang) ?>&genre=<?= urlencode($filterGenre) ?>&p=<?= $page - 1 ?>" class="tbl-btn">&laquo; Prev</a>
+    <?php endif; ?>
+    
+    <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
+      <a href="?search=<?= urlencode($q) ?>&lang=<?= urlencode($filterLang) ?>&genre=<?= urlencode($filterGenre) ?>&p=<?= $i ?>" class="tbl-btn <?= $i === $page ? 'active' : '' ?>" style="<?= $i === $page ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : '' ?>">
+        <?= $i ?>
+      </a>
+    <?php endfor; ?>
+
+    <?php if ($page < $totalPages): ?>
+      <a href="?search=<?= urlencode($q) ?>&lang=<?= urlencode($filterLang) ?>&genre=<?= urlencode($filterGenre) ?>&p=<?= $page + 1 ?>" class="tbl-btn">Next &raquo;</a>
+    <?php endif; ?>
+  </div>
+  <?php endif; ?>
 </div>
 <?php endif; ?>
 
