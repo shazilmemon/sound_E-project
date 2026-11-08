@@ -404,24 +404,82 @@ include __DIR__ . '/includes/header.php';
   <div class="container">
     <div class="section-header">
       <h2 class="section-title"><span class="accent-bar"></span><i class="fas fa-layer-group"></i> Browse Categories</h2>
+      <a href="<?= SITE_URL ?>/pages/music.php" class="view-all">Explore All Catalog <i class="fas fa-arrow-right"></i></a>
     </div>
     <div class="categories-grid">
       <?php
         $cats = [
-          ['icon'=>'📅','label'=>'By Year',    'href'=>'music.php?sort=year'],
-          ['icon'=>'🎤','label'=>'By Artist',  'href'=>'artists.php'],
-          ['icon'=>'💿','label'=>'By Album',   'href'=>'albums.php'],
-          ['icon'=>'🎭','label'=>'By Genre',   'href'=>'music.php?sort=genre'],
-          ['icon'=>'🌐','label'=>'By Language','href'=>'music.php?sort=lang'],
-          ['icon'=>'🔥','label'=>'Trending',   'href'=>'music.php?sort=popular'],
+          [
+            'icon'  => 'fa-calendar-days',
+            'label' => 'By Year',
+            'desc'  => '1990 - 2024 Eras',
+            'img'   => 'https://images.unsplash.com/photo-1539375665275-f9de415ef9ac?w=600&auto=format&fit=crop&q=80',
+            'href'  => 'music.php?sort=year'
+          ],
+          [
+            'icon'  => 'fa-microphone-lines',
+            'label' => 'By Artist',
+            'desc'  => 'Top Vocalists & Bands',
+            'img'   => 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&auto=format&fit=crop&q=80',
+            'href'  => 'artists.php'
+          ],
+          [
+            'icon'  => 'fa-compact-disc',
+            'label' => 'By Album',
+            'desc'  => 'Full Soundtracks',
+            'img'   => 'https://images.unsplash.com/photo-1603048588665-791ca8aea617?w=600&auto=format&fit=crop&q=80',
+            'href'  => 'albums.php'
+          ],
+          [
+            'icon'  => 'fa-guitar',
+            'label' => 'By Genre',
+            'desc'  => 'Pop, Rock, Sufi & More',
+            'img'   => 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80',
+            'href'  => 'music.php?sort=genre'
+          ],
+          [
+            'icon'  => 'fa-globe',
+            'label' => 'By Language',
+            'desc'  => 'Regional, Hindi & English',
+            'img'   => 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=600&auto=format&fit=crop&q=80',
+            'href'  => 'music.php?sort=lang'
+          ],
+          [
+            'icon'  => 'fa-fire-flame-curved',
+            'label' => 'Trending Hits',
+            'desc'  => 'Top Streamed Now',
+            'img'   => 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&auto=format&fit=crop&q=80',
+            'href'  => 'music.php?sort=popular'
+          ]
         ];
         foreach ($cats as $c):
       ?>
         <a href="<?= SITE_URL ?>/pages/<?= $c['href'] ?>" class="cat-card">
-          <div class="cat-icon"><?= $c['icon'] ?></div>
-          <h4><?= $c['label'] ?></h4>
+          <img src="<?= $c['img'] ?>" alt="<?= clean($c['label']) ?>" class="cat-card-bg" loading="lazy">
+          <div class="cat-card-overlay"></div>
+          <div class="cat-card-content">
+            <span class="cat-card-badge"><i class="fas <?= $c['icon'] ?>"></i></span>
+            <h4><?= clean($c['label']) ?></h4>
+            <p><?= clean($c['desc']) ?></p>
+          </div>
         </a>
       <?php endforeach; ?>
+    </div>
+
+    <!-- Quick Genre & Language Pill Strip -->
+    <div class="genre-quick-bar">
+      <a href="<?= SITE_URL ?>/pages/music.php?genre=Bollywood" class="genre-pill"><i class="fas fa-film"></i> Bollywood</a>
+      <a href="<?= SITE_URL ?>/pages/music.php?genre=Pop" class="genre-pill"><i class="fas fa-wand-magic-sparkles"></i> Pop Hits</a>
+      <a href="<?= SITE_URL ?>/pages/music.php?genre=Sufi" class="genre-pill"><i class="fas fa-moon"></i> Sufi &amp; Qawwali</a>
+      <a href="<?= SITE_URL ?>/pages/music.php?genre=Rock" class="genre-pill"><i class="fas fa-bolt"></i> Rock</a>
+      <a href="<?= SITE_URL ?>/pages/music.php?genre=Acoustic" class="genre-pill"><i class="fas fa-guitar"></i> Acoustic</a>
+      <a href="<?= SITE_URL ?>/pages/music.php?genre=Classical" class="genre-pill"><i class="fas fa-music"></i> Classical</a>
+      <a href="<?= SITE_URL ?>/pages/music.php?genre=Electronic" class="genre-pill"><i class="fas fa-headphones"></i> EDM / Dance</a>
+      <a href="<?= SITE_URL ?>/pages/music.php?lang=Hindi" class="genre-pill"><i class="fas fa-language"></i> Hindi</a>
+      <a href="<?= SITE_URL ?>/pages/music.php?lang=English" class="genre-pill"><i class="fas fa-globe"></i> English</a>
+      <a href="<?= SITE_URL ?>/pages/music.php?lang=Telugu" class="genre-pill"><i class="fas fa-om"></i> Telugu</a>
+      <a href="<?= SITE_URL ?>/pages/music.php?lang=Tamil" class="genre-pill"><i class="fas fa-sun"></i> Tamil</a>
+      <a href="<?= SITE_URL ?>/pages/music.php?lang=Punjabi" class="genre-pill"><i class="fas fa-drum"></i> Punjabi</a>
     </div>
   </div>
 </section>

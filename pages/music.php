@@ -15,7 +15,7 @@ $language = trim($_GET['lang']  ?? '');
 $year     = trim($_GET['year']  ?? '');
 $sort     = trim($_GET['sort']  ?? 'latest');
 $page     = max(1, (int)($_GET['page'] ?? 1));
-$perPage  = 10;
+$perPage  = 12;
 $offset   = ($page - 1) * $perPage;
 
 // Build query
@@ -162,7 +162,7 @@ include __DIR__ . '/../includes/header.php';
       <?php if ($page > 1): ?>
         <a href="?<?= $qs ?>&page=<?= $page-1 ?>" class="page-btn">&laquo; Prev</a>
       <?php endif; ?>
-      <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+      <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
         <a href="?<?= $qs ?>&page=<?= $i ?>" class="page-btn <?= $i===$page?'active':'' ?>"><?= $i ?></a>
       <?php endfor; ?>
       <?php if ($page < $totalPages): ?>
